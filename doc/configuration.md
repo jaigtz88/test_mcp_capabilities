@@ -88,7 +88,7 @@ export const appConfig: ApplicationConfig = {
         deps: [HttpClient],
       },
     }),
-    importProvidersFrom(IfxAuthorizationModule.forRootWithProvider(httpLoaderFactoryIXXX)),
+    importProvidersFrom(IxxAuthorizationModule.forRootWithProvider(httpLoaderFactoryIXXX)),
     provideRouter(routes, withEnabledBlockingInitialNavigation()),
   ],
 };
