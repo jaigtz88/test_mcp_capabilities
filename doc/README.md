@@ -1,6 +1,7 @@
 [GoTo Readme](../README.md)
 
 # Library Documentation Overview
+refer here for configuration setup or how to implement the feature
 
 - [Configuration](./configuration.md)
 - [HTTP Requests and JWT](./interceptor.md)
