@@ -60,19 +60,29 @@ async function getRepositoryInfo() {
 // Tool 2: List repository contents (browse directories)
 async function listContents(path = '', branch = 'main') {
     try {
+        // Block access to cdd-toast directory
+        if (path.startsWith('cdd-toast')) {
+            return { error: 'Access to cdd-toast directory is restricted' };
+        }
+        
         const data = await githubRequest(
             `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${path}?ref=${branch}`
         );
         
         // If it's an array, it's a directory listing
         if (Array.isArray(data)) {
-            return data.map(item => ({
-                name: item.name,
-                path: item.path,
-                type: item.type, // 'file' or 'dir'
-                size: item.size,
-                url: item.html_url,
-            }));
+            return data
+                .filter(item => 
+                    item.name !== 'cdd-toast' && 
+                    !item.path.startsWith('cdd-toast')
+                ) // Exclude cdd-toast folder and its contents
+                .map(item => ({
+                    name: item.name,
+                    path: item.path,
+                    type: item.type, // 'file' or 'dir'
+                    size: item.size,
+                    url: item.html_url,
+                }));
         }
         
         // If it's a single file, return file info
@@ -91,6 +101,11 @@ async function listContents(path = '', branch = 'main') {
 // Tool 3: Get file contents
 async function getFileContents(filePath: string, branch = 'main') {
     try {
+        // Block access to cdd-toast directory
+        if (filePath.startsWith('cdd-toast')) {
+            return { error: 'Access to cdd-toast directory is restricted' };
+        }
+        
         const data = await githubRequest(
             `/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}?ref=${branch}`
         );
@@ -215,7 +230,7 @@ server.tool(
 // Tool 2: List repository contents (READ-ONLY)
 server.tool(
     "list_contents",
-    "Lists files and directories in the Angular Toast Notifications demo repository. Useful for browsing documentation, sample components, and configuration files.",
+    "Lists files and directories in the Angular Toast Notifications demo repository from GitHub. Use this to browse the remote repository structure, documentation, sample components, and configuration files. Excludes internal MCP server folder (cdd-toast).",
     {
         path: z.string().optional().default('').describe("Path to directory or file to list"),
         branch: z.string().optional().default('main').describe("Git branch to browse"),
