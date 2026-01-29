@@ -270,7 +270,7 @@ server.tool(
 // Tool 4: Configure Angular app with toast notifications (ACTION)
 server.tool(
     "configure_angular_app",
-    "Automatically configures an Angular application with toast notifications library. Use this tool when the user asks to: configure toast notifications, set up toasts, add toast library to Angular app, configure angular-toast-notifications, integrate toast service, or set up notification system. Returns complete configuration instructions, JSON templates, HTTP loader examples, and usage patterns.",
+    "Fetches and analyzes toast notification configuration from the GitHub repository. Use this MCP tool when the user asks to: configure toast notifications, set up toasts, add toast library to Angular app, configure angular-toast-notifications, integrate toast service, or set up notification system. Returns complete configuration instructions, JSON templates, HTTP loader examples, and usage patterns extracted from the remote GitHub documentation.",
     {
         configPath: z.string().optional().default('doc/configuration.md').describe("Path to the configuration documentation file in the repository"),
         branch: z.string().optional().default('main').describe("Git branch to fetch the configuration from"),
