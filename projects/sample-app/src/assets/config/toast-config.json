@@ -1,0 +1,15 @@
+{
+  "position": "top-right",
+  "duration": 3000,
+  "maxToasts": 5,
+  "animationDuration": 300,
+  "showProgressBar": true,
+  "pauseOnHover": true,
+  "enableSound": false,
+  "defaultType": "info",
+  "allowedOrigins": [
+    "https://api.myapp.com",
+    "https://admin.myapp.com",
+    "https://notifications.myapp.com"
+  ]
+}
