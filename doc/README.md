@@ -1,11 +1,10 @@
 [GoTo Readme](../README.md)
 
-# Library Documentation Overview
-refer here for configuration setup or how to implement the feature
+# Angular Toast Notifications Documentation
 
-- [Configuration](./configuration.md)
-- [HTTP Requests and JWT](./interceptor.md)
-- [Working with claims](./claims.md)
-- [hasClaims Angular Directive](./hasClaims-directive.md)
-- [Authentication and Authorization Guard](./auth-guard.md)
-- [Error handling](./error-descriptions.md)
+Complete guide for implementing and using the `angular-toast-notifications` library in your Angular application.
+
+## Documentation
+
+- [Configuration](./configuration.md) - Setting up toast notifications with JSON configuration
+- [Usage Examples](./usage-examples.md) - How to display toasts in your components

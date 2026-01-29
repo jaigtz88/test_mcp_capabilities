@@ -1,102 +1,193 @@
 [GoTo Readme](../README.md)
 
-[GoTo Overview](./overview.md)
+# Toast Notification Configuration
 
-# Configuration Documentation
-
-We divide configuration example into 2 part which is via ngModule and single component. You can chose either one depend on your Angular current implementation. If your Angular app already using single component, you can directly use single component implementation section below.
+This guide shows how to configure the `angular-toast-notifications` library in your Angular application using JSON-based configuration with environment-specific overrides.
 
 ## Configuration Properties
 
-```ts
-import { IxxAuthorizationConfig } from './Data/ixx-authorization-config';
-import { IxxLogLevel } from './iXXX/Data/ixx-log-level-enum';
+The `ToastConfig` interface defines all available configuration options:
 
+```typescript
+export interface ToastConfig {
+  position: ToastPosition;           // Toast position on screen
+  duration: number;                  // Default duration in milliseconds
+  maxToasts: number;                 // Maximum toasts to show at once
+  animationDuration: number;         // Animation duration in milliseconds
+  showProgressBar: boolean;          // Show progress bar
+  pauseOnHover: boolean;            // Pause timer on hover
+  enableSound: boolean;              // Enable notification sound
+  defaultType: ToastType;           // Default toast type
+  allowedOrigins: string[];         // Allowed origins for notifications
+}
+```
+
+### Configuration Options
+
+- **`position`**: Where toasts appear on screen
+  - Options: `top-right`, `top-left`, `top-center`, `bottom-right`, `bottom-left`, `bottom-center`
+  - Default: `top-right`
+
+- **`duration`**: How long toasts stay visible (milliseconds)
+  - Default: `3000`
+  - Set to `0` for persistent toasts
+
+- **`maxToasts`**: Maximum number of toasts displayed simultaneously
+  - Default: `5`
+
+- **`animationDuration`**: Duration of show/hide animations (milliseconds)
+  - Default: `300`
+
+- **`showProgressBar`**: Display a progress bar showing remaining time
+  - Default: `true`
+
+- **`pauseOnHover`**: Pause the timer when mouse hovers over toast
+  - Default: `true`
+
+- **`enableSound`**: Play a sound when toast appears
+  - Default: `false`
+
+- **`defaultType`**: Default toast type if not specified
+  - Options: `success`, `error`, `warning`, `info`
+  - Default: `info`
+
+- **`allowedOrigins`**: Array of allowed API origins for cross-origin notifications
+
+## Setup with JSON Configuration File
+
+### Step 1: Create JSON Configuration File
+
+Create a configuration file at `src/assets/config/toast-config.json`:
+
+```json
 {
-    trustedUrlPrefixes: [ "https://your-api-server.com", "https://your-additional-server.com" ],
-    appClaimProviderUrl: "https://your-api-server.com/api/config/claims",
-    appJwtCacheProviderUrl: "https://your-api-server.com/api/config/jwtcache",
-    logLevel: IxxLogLevel.Info,
-    oidcConfigIds: [ "kerberos", "credentials" ]
-} as IxxAuthorizationConfig
+  "position": "top-right",
+  "duration": 3000,
+  "maxToasts": 5,
+  "animationDuration": 300,
+  "showProgressBar": true,
+  "pauseOnHover": true,
+  "enableSound": false,
+  "defaultType": "info",
+  "allowedOrigins": [
+    "https://api.myapp.com",
+    "https://admin.myapp.com",
+    "https://notifications.myapp.com"
+  ]
+}
 ```
 
-- `trustedUrlPrefixes`: define all URL prefixes you are trusting. The HTTP Interceptor only attaches the JWT token to requests with a trusted URL. It is always a `startsWith()` check. Therefore you do not need to specify all full qualified URIs. **NOTE**: You need to use HTTPS for all URIs. Only localhost is allowed to use HTTP only.
-- `appClaimProviderUrl`: the URL of your server which provides the endpoint to provide the JWT for SignalR authentication. The default implementation is registered at your server startup. The URL is always: `https://your-server.com/api/config/jwtcache`. The API just requires the Authorization header and returns a one-time-token which need to be send as argument for `access_token`. There is a support method which provides you all the support that you can read here: [SignalR integration](./signalr.md).
-- `appJwtCacheProviderUrl`: the URL of your server which provides the claims for your Angular application. The default implementation is registered at your server startup. The URL is always: `https://your-server.com/api/config/claims`. A description of the API can be viewed in the documentation.
-- `logLevel`: define your LogLevel. For production, you can set to an Error for only showing an error. **NOTE**: Angular will remove all `console.log(...)` commands from production builds.
-- `oidcConfigIds`: define all your configuration Ids define in the authentication. This is required to access the correct JWT. Note that the order matters! The first registered one is the default one.
+### Step 2: Create HTTP Loader Factory
 
-**NOTE**: be aware that a malformed or incomplete configuration will result in startup errors. You can find a list of all possible errors in [Error Descriptions](./error-descriptions.md).
+In your `app.config.ts`, create a factory function to load and process the configuration:
 
-## Load Configuration From JSON Files
+```typescript
+import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient, withInterceptorsFromDi, HttpClient } from '@angular/common/http';
+import { map, Observable } from 'rxjs';
+import { ToastConfig, ToastNotificationModule } from 'angular-toast-notifications';
+import { environment } from '../environments/environment';
 
-### ngModule implementation
-
-```ts
-import { HttpClient } from "@angular/common/http";
-import { map } from "rxjs";
-import { environment } from "src/environments/environment";
-import { IxxAuthorizationModule } from "./iXXX/ixx-authorization.module";
-import { IxxAuthorizationConfig } from "./iXXX/Data/ixx-authorization-config";
-import { IxxLogLevel } from "./iXXX/Data/ixx-log-level-enum";
-
-export const httpLoaderFactoryIXXX = (httpClient: HttpClient) => {
-  const configIXXX$ = httpClient.get<IxxAuthorizationConfig>(`${window.location.origin}/assets/auth/iXXX.json`).pipe(
-    map((customConfig: IxxAuthorizationConfig) => {
-      customConfig.logLevel = environment.production ? IxxLogLevel.Error : IxxLogLevel.Info;
-      return customConfig;
-    })
-  );
-
-  return configIXXX$;
+/**
+ * Factory function to load Toast configuration from JSON
+ * This demonstrates loading from JSON file with environment-specific overrides
+ */
+export const httpLoaderFactoryToast = (httpClient: HttpClient): Observable<ToastConfig> => {
+  return httpClient
+    .get<ToastConfig>(`${window.location.origin}/assets/config/toast-config.json`)
+    .pipe(
+      map((config: ToastConfig) => {
+        // Override settings based on environment
+        if (environment.production) {
+          config.enableSound = false; // Disable sound in production
+          config.duration = 5000; // Longer duration in production
+        } else {
+          config.enableSound = true; // Enable sound in development
+          config.duration = 3000; // Shorter duration for testing
+        }
+        
+        // Log configuration in development
+        if (!environment.production) {
+          console.log('Toast Notification Config loaded:', config);
+        }
+        
+        return config;
+      })
+    );
 };
-
-@NgModule({
-  imports: [IxxAuthorizationModule.forRootWithProvider(httpLoaderFactoryIXXX)],
-  exports: [AuthModule, IxxAuthorizationModule],
-})
-export class AuthConfigModule {}
 ```
 
-### Single Component implementation
+### Step 3: Configure Application
 
-```ts
-import { IxxAuthorizationConfig, IxxAuthorizationModule, IxxLogLevel } from "angular-iXXX-authorization";
+Register the Toast module in your application configuration:
 
-// ...
-
-// load the iXXX configuration file the same way as the authentication files
-export const httpLoaderFactoryIXXX = (httpClient: HttpClient) => {
-  const configIXXX$ = httpClient.get<IxxAuthorizationConfig>(`${window.location.origin}/assets/auth/iXXX.json`).pipe(
-    map((customConfig: IxxAuthorizationConfig) => {
-      customConfig.logLevel = environment.production ? IxxLogLevel.Error : IxxLogLevel.Info;
-      return customConfig;
-    })
-  );
-
-  return configIXXX$;
-};
-
+```typescript
 export const appConfig: ApplicationConfig = {
   providers: [
     provideHttpClient(withInterceptorsFromDi()),
-    provideAuth({
-      loader: {
-        provide: StsConfigLoader,
-        useFactory: httpLoaderFactory,
-        deps: [HttpClient],
-      },
-    }),
-    importProvidersFrom(IxxAuthorizationModule.forRootWithProvider(httpLoaderFactoryIXXX)),
-    provideRouter(routes, withEnabledBlockingInitialNavigation()),
+    
+    // Configure Toast Notification Module with HTTP loader
+    importProvidersFrom(
+      ToastNotificationModule.forRootWithProvider(httpLoaderFactoryToast)
+    ),
+    
+    provideRouter(routes),
   ],
 };
 ```
 
-## Embedded Configuration in Source Code
+## Static Configuration (Without JSON)
 
-### ngModule implementation
+If you prefer to configure toasts directly in code without loading from JSON:
+
+```typescript
+import { ToastNotificationModule, ToastPosition, ToastType } from 'angular-toast-notifications';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideHttpClient(withInterceptorsFromDi()),
+    
+    importProvidersFrom(
+      ToastNotificationModule.forRoot({
+        position: ToastPosition.TopRight,
+        duration: 3000,
+        maxToasts: 5,
+        animationDuration: 300,
+        showProgressBar: true,
+        pauseOnHover: true,
+        enableSound: false,
+        defaultType: ToastType.Info,
+        allowedOrigins: ['https://api.myapp.com']
+      })
+    ),
+    
+    provideRouter(routes),
+  ],
+};
+```
+
+## Environment-Specific Configuration
+
+You can adjust configuration based on the environment:
+
+```typescript
+import { environment } from '../environments/environment';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    importProvidersFrom(
+      ToastNotificationModule.forRoot({
+        position: ToastPosition.TopRight,
+        duration: environment.production ? 5000 : 3000,
+        enableSound: !environment.production,
+        showProgressBar: true,
+        pauseOnHover: true,
+        // ... other options
+      })
+    ),
+  ],
+};
 
 ```ts
 import { IxxAuthorizationModule } from "./iXXX/ixx-authorization.module";
