@@ -1,5 +1,5 @@
 {
-  "name": "cdd-toast",
+  "name": "cdd-toast-mcp",
   "version": "1.0.0",
   "description": "MCP server for analyzing and validating Angular toast notification configurations",
   "type": "module",
