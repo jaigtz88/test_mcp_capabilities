@@ -103,7 +103,7 @@ async function getFileContents(filePath: string, branch = 'main') {
     try {
         // DEMO : Block access to cdd-toast-mcp directory
         if (filePath.startsWith('cdd-toast-mcp')) {
-            //return { error: 'Access to cdd-toast-mcp directory is restricted' };
+            return { error: 'Access to cdd-toast-mcp directory is restricted' };
         }
         
         const data = await githubRequest(
