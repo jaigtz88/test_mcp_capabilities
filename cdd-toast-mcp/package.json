@@ -11,6 +11,7 @@
     "dev": "tsc && node dist/index.js",
     "run-mcp": "node dist/index.js",
     "test-api": "node test-ghapi.js",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
     "prepare": "npm run build"
   },
   "keywords": [
