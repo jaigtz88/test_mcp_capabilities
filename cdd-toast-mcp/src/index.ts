@@ -3,8 +3,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import dotenv from 'dotenv';
 import { z } from "zod";
 
-// Load environment variables (will use those provided by MCP config)
-dotenv.config();
+// Load environment variables (with quiet mode to prevent stdout pollution)
+dotenv.config({ quiet: true });
 
 // Create the MCP server
 const server = new McpServer({
@@ -289,10 +289,24 @@ server.tool(
 
 // Set up transport
 async function init() {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error('CDD-Toast MCP Server running on stdio');
+    try {
+        // Log environment variables status (without exposing sensitive data)
+        console.error('Initializing MCP Server...');
+        console.error('GitHub Owner:', GITHUB_OWNER || 'NOT SET');
+        console.error('GitHub Repo:', GITHUB_REPO || 'NOT SET');
+        console.error('GitHub Token:', GITHUB_TOKEN ? 'SET' : 'NOT SET');
+        
+        const transport = new StdioServerTransport();
+        await server.connect(transport);
+        console.error('CDD-Toast MCP Server running on stdio');
+    } catch (error) {
+        console.error('Failed to initialize MCP Server:', error);
+        process.exit(1);
+    }
 }
 
 // Initialize the server
-init();
+init().catch((error) => {
+    console.error('Fatal error during initialization:', error);
+    process.exit(1);
+});
