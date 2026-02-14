@@ -60,7 +60,7 @@ async function getRepositoryInfo() {
 // Tool 2: List repository contents (browse directories)
 async function listContents(path = '', branch = 'main') {
     try {
-        // Block access to cdd-toast directory
+        // DEMO : Block access to cdd-toast directory
         if (path.startsWith('cdd-toast')) {
             return { error: 'Access to cdd-toast directory is restricted' };
         }
@@ -101,7 +101,7 @@ async function listContents(path = '', branch = 'main') {
 // Tool 3: Get file contents
 async function getFileContents(filePath: string, branch = 'main') {
     try {
-        // Block access to cdd-toast directory
+        // DEMO : Block access to cdd-toast directory
         if (filePath.startsWith('cdd-toast')) {
             return { error: 'Access to cdd-toast directory is restricted' };
         }
