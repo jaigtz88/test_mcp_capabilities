@@ -60,9 +60,9 @@ async function getRepositoryInfo() {
 // Tool 2: List repository contents (browse directories)
 async function listContents(path = '', branch = 'main') {
     try {
-        // DEMO : Block access to cdd-toast directory
-        if (path.startsWith('cdd-toast')) {
-            return { error: 'Access to cdd-toast directory is restricted' };
+        // DEMO : Block access to cdd-toast-mcp directory
+        if (path.startsWith('cdd-toast-mcp')) {
+            return { error: 'Access to cdd-toast-mcp directory is restricted' };
         }
         
         const data = await githubRequest(
@@ -101,9 +101,9 @@ async function listContents(path = '', branch = 'main') {
 // Tool 3: Get file contents
 async function getFileContents(filePath: string, branch = 'main') {
     try {
-        // DEMO : Block access to cdd-toast directory
-        if (filePath.startsWith('cdd-toast')) {
-            return { error: 'Access to cdd-toast directory is restricted' };
+        // DEMO : Block access to cdd-toast-mcp directory
+        if (filePath.startsWith('cdd-toast-mcp')) {
+            //return { error: 'Access to cdd-toast-mcp directory is restricted' };
         }
         
         const data = await githubRequest(
@@ -212,7 +212,7 @@ async function configureAngularApp(configPath = 'doc/configuration.md', branch =
 
 // Tool 1: Get repository info (READ-ONLY)
 server.tool(
-    "get_repository_info",
+    "cdd-get_repository_info",
     "Gets basic information about the Angular Toast Notifications demo repository including name, description, stars, and last update time.",
     {},
     async () => {
@@ -229,7 +229,7 @@ server.tool(
 
 // Tool 2: List repository contents (READ-ONLY)
 server.tool(
-    "list_contents",
+    "cdd-list_contents",
     "Lists files and directories in the Angular Toast Notifications demo repository from GitHub. Use this to browse the remote repository structure, documentation, sample components, and configuration files. Excludes internal MCP server folder (cdd-toast).",
     {
         path: z.string().optional().default('').describe("Path to directory or file to list"),
@@ -249,7 +249,7 @@ server.tool(
 
 // Tool 3: Get file contents (READ-ONLY)
 server.tool(
-    "get_file_contents",
+    "cdd-get_file_contents",
     "Retrieves the complete contents of a specific file from the Angular Toast Notifications repository. Use this to read documentation, sample components, configuration examples, or type definitions.",
     {
         filePath: z.string().min(1).describe("Relative path to the file in the repository"),
@@ -269,7 +269,7 @@ server.tool(
 
 // Tool 4: Configure Angular app with toast notifications (ACTION)
 server.tool(
-    "configure_angular_app",
+    "cdd-configure_angular_app",
     "Fetches and analyzes toast notification configuration from the GitHub repository. Use this MCP tool when the user asks to: configure toast notifications, set up toasts, add toast library to Angular app, configure angular-toast-notifications, integrate toast service, or set up notification system. Returns complete configuration instructions, JSON templates, HTTP loader examples, and usage patterns extracted from the remote GitHub documentation.",
     {
         configPath: z.string().optional().default('doc/configuration.md').describe("Path to the configuration documentation file in the repository"),
