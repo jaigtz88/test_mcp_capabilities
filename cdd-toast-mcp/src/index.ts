@@ -2,6 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import dotenv from 'dotenv';
 import { z } from "zod";
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Load environment variables (with quiet mode to prevent stdout pollution)
 dotenv.config({ quiet: true });
@@ -208,6 +210,258 @@ async function configureAngularApp(configPath = 'doc/configuration.md', branch =
     }
 }
 
+// Helper function to find config files automatically
+function findConfigFiles(userAppConfigPath?: string, userToastConfigPath?: string): { appConfigPath: string | null, toastConfigPath: string | null } {
+    const baseDir = process.cwd();
+    
+    // Build candidate directories based on where the MCP server is running
+    // If running from cdd-toast-mcp, we need to look in parent directory for client-app
+    const candidateDirs = [
+        baseDir,                                    // Current directory
+        path.join(baseDir, 'client-app'),          // client-app as sibling
+        path.join(baseDir, '..'),                  // Parent directory (for ../client-app scenario)
+        path.join(baseDir, '..', 'client-app'),    // ../client-app (if in cdd-toast-mcp dir)
+    ];
+    
+    // If user provided paths, use those first
+    if (userAppConfigPath && userToastConfigPath) {
+        return {
+            appConfigPath: path.resolve(userAppConfigPath),
+            toastConfigPath: path.resolve(userToastConfigPath),
+        };
+    }
+    
+    let foundAppConfig: string | null = null;
+    let foundToastConfig: string | null = null;
+    
+    // Search for app.config.ts
+    if (userAppConfigPath) {
+        foundAppConfig = userAppConfigPath;
+    } else {
+        for (const dir of candidateDirs) {
+            const candidate = path.join(dir, 'src', 'app', 'app.config.ts');
+            if (fs.existsSync(candidate)) {
+                foundAppConfig = candidate;
+                break;
+            }
+        }
+    }
+    
+    // Search for toast-config.json
+    if (userToastConfigPath) {
+        foundToastConfig = userToastConfigPath;
+    } else {
+        for (const dir of candidateDirs) {
+            const candidate = path.join(dir, 'src', 'assets', 'config', 'toast-config.json');
+            if (fs.existsSync(candidate)) {
+                foundToastConfig = candidate;
+                break;
+            }
+        }
+    }
+    
+    return {
+        appConfigPath: foundAppConfig,
+        toastConfigPath: foundToastConfig,
+    };
+}
+
+// Tool 5: Verify Angular app configuration (VALIDATION)
+async function verifyAngularAppConfig(appConfigPath?: string, toastConfigPath?: string) {
+    const baseDir = process.cwd();
+    const configFiles = findConfigFiles(appConfigPath, toastConfigPath);
+    
+    const validationReport = {
+        success: true,
+        issues: [] as { type: 'error' | 'warning' | 'info', message: string, fix?: string }[],
+        suggestions: [] as string[],
+        checklist: {
+            hasAppConfig: false,
+            hasToastConfigJson: false,
+            hasHttpLoaderFactory: false,
+            hasToastModuleImport: false,
+            hasProvideHttpClient: false,
+            hasToastModuleProvider: false,
+            hasValidToastConfigSchema: false,
+        },
+        details: {
+            appConfigLocation: configFiles.appConfigPath || 'src/app/app.config.ts (not found)',
+            toastConfigLocation: configFiles.toastConfigPath || 'src/assets/config/toast-config.json (not found)',
+        }
+    };
+
+    try {
+        const defaultAppConfigPath = configFiles.appConfigPath || path.join(baseDir, 'src', 'app', 'app.config.ts');
+        const defaultToastConfigPath = configFiles.toastConfigPath || path.join(baseDir, 'src', 'assets', 'config', 'toast-config.json');
+
+        // Check app.config.ts
+        let appConfigContent = '';
+        try {
+            appConfigContent = fs.readFileSync(defaultAppConfigPath, 'utf-8');
+            validationReport.checklist.hasAppConfig = true;
+        } catch (e) {
+            validationReport.success = false;
+            validationReport.issues.push({
+                type: 'error',
+                message: `app.config.ts not found at ${defaultAppConfigPath}`,
+                fix: `Create the file at ${defaultAppConfigPath} with proper Angular configuration`
+            });
+        }
+
+        // Check toast-config.json
+        let toastConfigContent = '';
+        let toastConfigObj: any = null;
+        try {
+            toastConfigContent = fs.readFileSync(defaultToastConfigPath, 'utf-8');
+            toastConfigObj = JSON.parse(toastConfigContent);
+            validationReport.checklist.hasToastConfigJson = true;
+        } catch (e) {
+            validationReport.success = false;
+            validationReport.issues.push({
+                type: 'error',
+                message: `toast-config.json not found or invalid JSON at ${defaultToastConfigPath}`,
+                fix: `Create the file at ${defaultToastConfigPath} with valid ToastConfig JSON structure`
+            });
+        }
+
+        // Validate app.config.ts content
+        if (appConfigContent) {
+            // Check for required imports
+            const hasToastNotificationImport = /import\s*{\s*[^}]*ToastNotificationModule[^}]*}\s*from\s*['"]angular-toast-notifications['"]/.test(appConfigContent);
+            const hasToastConfigImport = /import\s*{\s*[^}]*ToastConfig[^}]*}\s*from\s*['"]angular-toast-notifications['"]/.test(appConfigContent);
+            const hasHttpClientImport = /import\s*{\s*[^}]*HttpClient[^}]*}\s*from\s*['"]@angular\/common\/http['"]/.test(appConfigContent);
+            const hasProvideHttpClientCall = /provideHttpClient\(\)/.test(appConfigContent);
+
+            if (!hasToastNotificationImport) {
+                validationReport.issues.push({
+                    type: 'error',
+                    message: 'ToastNotificationModule is not imported',
+                    fix: "Add: import { ToastNotificationModule } from 'angular-toast-notifications';"
+                });
+            }
+
+            if (!hasToastConfigImport) {
+                validationReport.issues.push({
+                    type: 'warning',
+                    message: 'ToastConfig type is not imported',
+                    fix: "Add: import { ToastConfig } from 'angular-toast-notifications';"
+                });
+            }
+
+            if (!hasHttpClientImport) {
+                validationReport.issues.push({
+                    type: 'error',
+                    message: 'HttpClient is not imported',
+                    fix: "Add: import { HttpClient } from '@angular/common/http';"
+                });
+            }
+
+            // Check for httpLoaderFactoryToast function
+            const hasHttpLoaderFactory = /export\s+const\s+httpLoaderFactoryToast\s*=/.test(appConfigContent);
+            validationReport.checklist.hasHttpLoaderFactory = hasHttpLoaderFactory;
+            if (!hasHttpLoaderFactory) {
+                validationReport.issues.push({
+                    type: 'error',
+                    message: 'httpLoaderFactoryToast function is not defined',
+                    fix: 'Create the httpLoaderFactoryToast factory function to load toast configuration from JSON'
+                });
+            }
+
+            // Check for provideHttpClient
+            validationReport.checklist.hasProvideHttpClient = hasProvideHttpClientCall;
+            if (!hasProvideHttpClientCall) {
+                validationReport.issues.push({
+                    type: 'error',
+                    message: 'provideHttpClient() is not registered in providers',
+                    fix: 'Add provideHttpClient() to the providers array in appConfig'
+                });
+            }
+
+            // Check for ToastNotificationModule.forRootWithProvider
+            const hasToastModuleProvider = /ToastNotificationModule\.forRootWithProvider\(\s*httpLoaderFactoryToast\s*\)/.test(appConfigContent);
+            validationReport.checklist.hasToastModuleProvider = hasToastModuleProvider;
+            if (!hasToastModuleProvider) {
+                validationReport.issues.push({
+                    type: 'error',
+                    message: 'ToastNotificationModule is not properly configured with provider',
+                    fix: 'Add: importProvidersFrom(ToastNotificationModule.forRootWithProvider(httpLoaderFactoryToast)) to providers'
+                });
+            }
+
+            validationReport.checklist.hasToastModuleImport = hasToastNotificationImport;
+        }
+
+        // Validate toast-config.json schema
+        if (toastConfigObj) {
+            const requiredFields = ['position', 'duration', 'maxToasts', 'showProgressBar', 'enableSound', 'defaultType'];
+            const missingFields = requiredFields.filter(field => !(field in toastConfigObj));
+
+            if (missingFields.length > 0) {
+                validationReport.issues.push({
+                    type: 'warning',
+                    message: `toast-config.json is missing fields: ${missingFields.join(', ')}`,
+                    fix: `Add the missing fields to your toast-config.json. Required fields: ${requiredFields.join(', ')}`
+                });
+            } else {
+                validationReport.checklist.hasValidToastConfigSchema = true;
+            }
+
+            // Validate field values
+            const validPositions = ['top-left', 'top-right', 'top-center', 'bottom-left', 'bottom-right', 'bottom-center'];
+            if (toastConfigObj.position && !validPositions.includes(toastConfigObj.position)) {
+                validationReport.issues.push({
+                    type: 'error',
+                    message: `Invalid position value: ${toastConfigObj.position}`,
+                    fix: `Set position to one of: ${validPositions.join(', ')}`
+                });
+            }
+
+            if (toastConfigObj.duration !== undefined && typeof toastConfigObj.duration !== 'number') {
+                validationReport.issues.push({
+                    type: 'error',
+                    message: 'duration must be a number (milliseconds)',
+                    fix: 'Update duration to a numeric value (e.g., 3000)'
+                });
+            }
+
+            if (toastConfigObj.maxToasts !== undefined && typeof toastConfigObj.maxToasts !== 'number') {
+                validationReport.issues.push({
+                    type: 'error',
+                    message: 'maxToasts must be a number',
+                    fix: 'Update maxToasts to a numeric value (e.g., 5)'
+                });
+            }
+        }
+
+        // Generate suggestions based on issues
+        if (validationReport.issues.length === 0) {
+            validationReport.suggestions.push('✓ Your configuration looks great! The Toast Notification Module is properly configured.');
+        } else {
+            const errorCount = validationReport.issues.filter(i => i.type === 'error').length;
+            const warningCount = validationReport.issues.filter(i => i.type === 'warning').length;
+            
+            if (errorCount > 0) {
+                validationReport.suggestions.push(`Found ${errorCount} error(s) that need to be fixed for the toast notifications to work correctly.`);
+                validationReport.suggestions.push('Please review the errors above and apply the suggested fixes.');
+            }
+            if (warningCount > 0) {
+                validationReport.suggestions.push(`Found ${warningCount} warning(s) that may improve your configuration.`);
+            }
+        }
+
+        return validationReport;
+    } catch (error) {
+        return {
+            ...validationReport,
+            success: false,
+            issues: [{
+                type: 'error',
+                message: error instanceof Error ? error.message : 'Unknown error during verification'
+            }]
+        };
+    }
+}
+
 // Register tools with MCP server
 
 // Tool 1: Get repository info (READ-ONLY)
@@ -278,6 +532,26 @@ server.tool(
                 {
                     type: "text",
                     text: JSON.stringify(await configureAngularApp(), null, 2),
+                },
+            ],
+        };
+    }
+);
+
+// Tool 5: Verify Angular app configuration (VALIDATION)
+server.tool(
+    "cdd-verify_config",
+    "Verifies if the user's existing Angular app configuration is correct. Use this tool when the user asks to: verify configuration, check setup, validate configuration, review current setup, or confirm everything is correct. Reads local configuration files and validates them against documented standards. Returns a detailed validation report with issues found, suggestions for fixes, and a checklist of what's been properly configured.",
+    {
+        appConfigPath: z.string().optional().describe("Optional custom path to app.config.ts file (relative to workspace)"),
+        toastConfigPath: z.string().optional().describe("Optional custom path to toast-config.json file (relative to workspace)"),
+    },
+    async ({ appConfigPath, toastConfigPath }) => {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify(await verifyAngularAppConfig(appConfigPath, toastConfigPath), null, 2),
                 },
             ],
         };
