@@ -271,16 +271,13 @@ server.tool(
 server.tool(
     "cdd-configure_angular_app",
     "Fetches and analyzes toast notification configuration from the GitHub repository. Use this MCP tool when the user asks to: configure toast notifications, set up toasts, add toast library to Angular app, configure angular-toast-notifications, integrate toast service, or set up notification system. Returns complete configuration instructions, JSON templates, HTTP loader examples, and usage patterns extracted from the remote GitHub documentation.",
-    {
-        configPath: z.string().optional().default('doc/configuration.md').describe("Path to the configuration documentation file in the repository"),
-        branch: z.string().optional().default('main').describe("Git branch to fetch the configuration from"),
-    },
-    async ({ configPath, branch }) => {
+    {},
+    async () => {
         return {
             content: [
                 {
                     type: "text",
-                    text: JSON.stringify(await configureAngularApp(configPath, branch), null, 2),
+                    text: JSON.stringify(await configureAngularApp(), null, 2),
                 },
             ],
         };
