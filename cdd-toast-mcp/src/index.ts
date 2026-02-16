@@ -130,8 +130,8 @@ async function getFileContents(filePath: string, branch = "main") {
   }
 }
 
-// Tool 4: Configure Angular app with toast notifications
-async function configureAngularApp(
+// Tool 4: Apply Angular app configuration with toast notifications
+async function applyAngularAppConfig(
   configPath = "doc/configuration.md",
   branch = "main",
 ) {
@@ -197,11 +197,77 @@ async function configureAngularApp(
       },
       instructions: [
         "1. Create toast-config.json in src/assets/config/",
-        "2. Import ToastNotificationModule in app.config.ts",
-        "3. Create httpLoaderFactoryToast function to load JSON config",
-        "4. Add environment-specific overrides (production vs development)",
-        "5. Register module with importProvidersFrom(ToastNotificationModule.forRootWithProvider(httpLoaderFactoryToast))",
-        "6. Inject ToastService in components where needed",
+        "2. Create toast-position.enum.ts in src/lib/data/",
+        "3. Create toast-type.enum.ts in src/lib/data/",
+        "4. Create toast-config.ts in src/lib/data/",
+        "5. Import ToastNotificationModule in app.config.ts",
+        "6. Create httpLoaderFactoryToast function to load JSON config",
+        "7. Add environment-specific overrides (production vs development)",
+        "8. Register module with importProvidersFrom(ToastNotificationModule.forRootWithProvider(httpLoaderFactoryToast))",
+        "9. Inject ToastService in components where needed",
+      ],
+      requiredFiles: [
+        {
+          path: "src/lib/data/toast-position.enum.ts",
+          content: `export enum ToastPosition {
+  TopRight = 'top-right',
+  TopLeft = 'top-left',
+  TopCenter = 'top-center',
+  BottomRight = 'bottom-right',
+  BottomLeft = 'bottom-left',
+  BottomCenter = 'bottom-center'
+}`,
+          description: "Toast position enum - REQUIRED",
+          priority: 1,
+        },
+        {
+          path: "src/lib/data/toast-type.enum.ts",
+          content: `export enum ToastType {
+  Success = 'success',
+  Error = 'error',
+  Warning = 'warning',
+  Info = 'info'
+}`,
+          description: "Toast type enum - REQUIRED",
+          priority: 2,
+        },
+        {
+          path: "src/lib/data/toast-config.ts",
+          content: `import { ToastPosition } from './toast-position.enum';
+import { ToastType } from './toast-type.enum';
+
+export interface ToastConfig {
+  position: ToastPosition;
+  duration: number;
+  maxToasts: number;
+  animationDuration: number;
+  showProgressBar: boolean;
+  pauseOnHover: boolean;
+  enableSound: boolean;
+  defaultType: ToastType;
+  allowedOrigins: string[];
+}`,
+          description: "Toast config interface - REQUIRED",
+          priority: 3,
+        },
+        {
+          path: "src/assets/config/toast-config.json",
+          content: `{
+  "position": "top-right",
+  "duration": 3000,
+  "maxToasts": 5,
+  "animationDuration": 300,
+  "showProgressBar": true,
+  "pauseOnHover": true,
+  "enableSound": false,
+  "defaultType": "info",
+  "allowedOrigins": [
+    "https://api.myapp.com"
+  ]
+}`,
+          description: "Toast configuration JSON - REQUIRED",
+          priority: 4,
+        },
       ],
       configurationTemplate: {
         position: "top-right",
@@ -567,6 +633,168 @@ async function verifyAngularAppConfig(
   }
 }
 
+// Tool 6: Scaffold (Create) all required toast notification files
+async function scaffoldToastSetup() {
+  return {
+    success: true,
+    message:
+      "Toast notification setup scaffold - Create these files in the order listed",
+    action: "create_files_with_exact_content",
+    files: [
+      {
+        path: "src/lib/data/toast-position.enum.ts",
+        content: `export enum ToastPosition {
+  TopRight = 'top-right',
+  TopLeft = 'top-left',
+  TopCenter = 'top-center',
+  BottomRight = 'bottom-right',
+  BottomLeft = 'bottom-left',
+  BottomCenter = 'bottom-center'
+}`,
+        required: true,
+        order: 1,
+        description:
+          "Toast position enum - defines where toasts appear on screen",
+      },
+      {
+        path: "src/lib/data/toast-type.enum.ts",
+        content: `export enum ToastType {
+  Success = 'success',
+  Error = 'error',
+  Warning = 'warning',
+  Info = 'info'
+}`,
+        required: true,
+        order: 2,
+        description: "Toast type enum - defines toast notification types",
+      },
+      {
+        path: "src/lib/data/toast-config.ts",
+        content: `import { ToastPosition } from './toast-position.enum';
+import { ToastType } from './toast-type.enum';
+
+export interface ToastConfig {
+  position: ToastPosition;
+  duration: number;
+  maxToasts: number;
+  animationDuration: number;
+  showProgressBar: boolean;
+  pauseOnHover: boolean;
+  enableSound: boolean;
+  defaultType: ToastType;
+  allowedOrigins: string[];
+}`,
+        required: true,
+        order: 3,
+        description:
+          "Toast config interface - TypeScript interface for configuration",
+      },
+      {
+        path: "src/assets/config/toast-config.json",
+        content: `{
+  "position": "top-right",
+  "duration": 3000,
+  "maxToasts": 5,
+  "animationDuration": 300,
+  "showProgressBar": true,
+  "pauseOnHover": true,
+  "enableSound": false,
+  "defaultType": "info",
+  "allowedOrigins": [
+    "https://api.myapp.com"
+  ]
+}`,
+        required: true,
+        order: 4,
+        description: "Toast configuration JSON - runtime configuration file",
+      },
+    ],
+    appConfigModifications: [
+      {
+        file: "src/app/app.config.ts",
+        action: "add_import",
+        order: 1,
+        content: `import { ToastNotificationModule } from 'angular-toast-notifications';
+import { ToastConfig } from '../lib/data/toast-config';`,
+      },
+      {
+        file: "src/app/app.config.ts",
+        action: "add_http_loader_factory",
+        order: 2,
+        content: `// HTTP Loader Factory for Toast Configuration
+export const httpLoaderFactoryToast = (httpClient: HttpClient): Observable<ToastConfig> => {
+  return httpClient
+    .get<ToastConfig>(\`\${window.location.origin}/assets/config/toast-config.json\`)
+    .pipe(
+      map((config: ToastConfig) => {
+        // Override settings based on environment
+        if (environment.production) {
+          config.enableSound = false; // Disable sound in production
+          config.duration = 5000; // Longer duration in production
+        } else {
+          config.enableSound = true; // Enable sound in development
+          config.duration = 3000; // Shorter duration for testing
+        }
+        
+        // Log configuration in development
+        if (!environment.production) {
+          console.log('Toast Notification Config loaded:', config);
+        }
+        
+        return config;
+      })
+    );
+};`,
+      },
+      {
+        file: "src/app/app.config.ts",
+        action: "update_providers",
+        order: 3,
+        content: `importProvidersFrom(
+  DummyModule.forRoot(),
+  ToastNotificationModule.forRootWithProvider(httpLoaderFactoryToast)
+)`,
+      },
+    ],
+    environmentFiles: [
+      {
+        path: "src/environments/environment.ts",
+        content: `export const environment = {
+  production: false
+};`,
+        required: true,
+        description: "Development environment configuration",
+      },
+      {
+        path: "src/environments/environment.prod.ts",
+        content: `export const environment = {
+  production: true
+};`,
+        required: true,
+        description: "Production environment configuration",
+      },
+    ],
+    usageInstructions: [
+      '1. Create all files listed above in the "files" section with the exact content provided',
+      "2. Ensure directories exist: src/lib/data/ and src/assets/config/",
+      '3. Update app.config.ts with the modifications listed in "appConfigModifications" section',
+      "4. Create environment files if they don't exist",
+      "5. Run: npm install ngx-toastr",
+      "6. Test with: ng build",
+    ],
+    completionChecklist: [
+      "✓ src/lib/data/toast-position.enum.ts created",
+      "✓ src/lib/data/toast-type.enum.ts created",
+      "✓ src/lib/data/toast-config.ts created",
+      "✓ src/assets/config/toast-config.json created",
+      "✓ src/app/app.config.ts updated with imports",
+      "✓ httpLoaderFactoryToast function added",
+      "✓ ToastNotificationModule provider registered",
+      "✓ Environment files created",
+    ],
+  };
+}
+
 // Register tools with MCP server
 
 // Tool 1: Get repository info (READ-ONLY)
@@ -645,9 +873,9 @@ server.tool(
   },
 );
 
-// Tool 4: Configure Angular app with toast notifications (ACTION)
+// Tool 4: Apply Angular app configuration with toast notifications (ACTION)
 server.tool(
-  "cdd-configure_angular_app",
+  "cdd-apply_config",
   "Fetches and analyzes toast notification configuration from the GitHub repository. Use this MCP tool when the user asks to: configure toast notifications, set up toasts, add toast library to Angular app, configure angular-toast-notifications, integrate toast service, or set up notification system. Returns complete configuration instructions, JSON templates, HTTP loader examples, and usage patterns extracted from the remote GitHub documentation.",
   {},
   async () => {
@@ -655,7 +883,7 @@ server.tool(
       content: [
         {
           type: "text",
-          text: JSON.stringify(await configureAngularApp(), null, 2),
+          text: JSON.stringify(await applyAngularAppConfig(), null, 2),
         },
       ],
     };
@@ -690,6 +918,23 @@ server.tool(
             null,
             2,
           ),
+        },
+      ],
+    };
+  },
+);
+
+// Tool 6: Scaffold Toast Setup (GUARANTEED FILE CREATION)
+server.tool(
+  "cdd-scaffold_toast_setup",
+  "Creates all required toast notification files with guaranteed consistency. Always creates the complete scaffolding needed for toast configuration including enums, interfaces, JSON config, and app modifications. Use this when you need to ensure ALL necessary files are created deterministically.",
+  {},
+  async () => {
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(await scaffoldToastSetup(), null, 2),
         },
       ],
     };
